@@ -39,13 +39,13 @@ func TOTP(when time.Time, key []byte, interval time.Duration) (string, error) {
 	var (
 		mac    = hash.Sum(nil)
 		offset = mac[len(mac)-1] & 0xF
+		d      = uint(binary.BigEndian.Uint32(mac[offset:offset+4]) & 0x7FFFFFFF)
 	)
-	return fmt.Sprintf("%0*d", *digits, uint(binary.BigEndian.Uint32(mac[offset:offset+4])&0x7FFFFFFF)%uint(math.Pow10(*digits))), nil
+	return fmt.Sprintf("%0*d", *digits, d%uint(math.Pow10(*digits))), nil
 }
 
 func parse(f *os.File) error {
 	s := bufio.NewScanner(f)
-	s.Split(bufio.ScanLines)
 	for s.Scan() {
 		parts := strings.Split(s.Text(), "\t")
 		if len(parts) != 2 {
@@ -96,7 +96,7 @@ func main() {
 		for name, key := range providers {
 			decoded, err := base32.StdEncoding.DecodeString(string(key))
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "decoding failed: %q (%s)\n", err, name)
+				fmt.Fprintf(os.Stderr, "base32 decoding failed: %q (%s)\n", err, name)
 				decoded = []byte(key)
 			}
 			secret, err := TOTP(time.Now(), decoded, dur)
